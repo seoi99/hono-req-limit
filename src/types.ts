@@ -1,4 +1,5 @@
 import type { Context } from 'hono'
+import { ContentfulStatusCode } from 'hono/utils/http-status'
 
 export interface RateLimitInfo {
   count: number
@@ -22,7 +23,7 @@ export interface RateLimitOptions {
   /** Response body when limit is exceeded. Default: "Too Many Requests" */
   message?: string | object | ((c: Context) => string | object | Promise<string | object>)
   /** HTTP status code when limit is exceeded. Default: 429 */
-  statusCode?: number
+  statusCode?: ContentfulStatusCode
   /** Send standard RateLimit-* headers. Default: true */
   headers?: boolean
   /** Return true to bypass rate limiting for this request */
