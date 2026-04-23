@@ -6,6 +6,7 @@ interface Entry {
 }
 
 export class MemoryStore implements RateLimitStore {
+  readonly type = 'memory' as const
   private store = new Map<string, Entry>()
 
   async increment(key: string, windowMs: number): Promise<RateLimitInfo> {

@@ -42,10 +42,17 @@
     "node": ">=18"
   },
   "peerDependencies": {
-    "hono": ">=4.0.0"
+    "hono": ">=4.0.0",
+    "ioredis": ">=4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "ioredis": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "hono": "^4.0.0",
+    "ioredis": "^5.10.1",
     "tsup": "^8.0.0",
     "typescript": "^5.0.0",
     "vitest": "^3.0.0"

@@ -1,6 +1,52 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { Hono } from 'hono'
 import { rateLimit, MemoryStore } from '../index'
+
+describe('MemoryStore', () => {
+  it('identifies as memory', () => {
+    expect(new MemoryStore().type).toBe('memory')
+  })
+})
+
+describe('rateLimit store connection check', () => {
+  it('returns 500 on first request when store ping fails', async () => {
+    const store = {
+      type: 'redis',
+      ping: vi.fn().mockResolvedValue(false),
+      increment: vi.fn(),
+      reset: vi.fn(),
+    }
+    const app = new Hono()
+    app.use('*', rateLimit({ store, limit: 10 }))
+    app.get('/', (c) => c.text('OK'))
+
+    const res = await app.request('/')
+    expect(res.status).toBe(500)
+  })
+
+  it('pings only once across multiple requests', async () => {
+    const store = {
+      type: 'redis',
+      ping: vi.fn().mockResolvedValue(true),
+      increment: vi.fn().mockResolvedValue({ count: 1, resetAt: Date.now() + 60_000 }),
+      reset: vi.fn(),
+    }
+    const app = new Hono()
+    app.use('*', rateLimit({ store, limit: 10 }))
+    app.get('/', (c) => c.text('OK'))
+
+    await app.request('/')
+    await app.request('/')
+    await app.request('/')
+    expect(store.ping).toHaveBeenCalledTimes(1)
+  })
+
+  it('skips ping check when store has no ping method', async () => {
+    const app = createApp({ store: new MemoryStore() })
+    const res = await app.request('/')
+    expect(res.status).toBe(200)
+  })
+})
 
 function createApp(options = {}) {
   const app = new Hono()

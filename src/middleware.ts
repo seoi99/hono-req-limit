@@ -1,6 +1,6 @@
 import type { Context, MiddlewareHandler } from 'hono'
 import { MemoryStore } from './store/memory'
-import type { RateLimitOptions } from './types'
+import type { RateLimitOptions, RateLimitStore } from './types'
 
 function getClientIp(c: Context): string {
   return (
@@ -15,7 +15,6 @@ export function rateLimitMiddleware(options: RateLimitOptions = {}): MiddlewareH
     windowMs = 60_000,
     limit = 10,
     keyGenerator = getClientIp,
-    store = new MemoryStore(),
     message = 'Too Many Requests',
     statusCode = 429,
     headers = true,
@@ -23,8 +22,16 @@ export function rateLimitMiddleware(options: RateLimitOptions = {}): MiddlewareH
     onLimitReached,
   } = options
 
+  const store: RateLimitStore = options.store ?? new MemoryStore()
+  let connectionVerified = !store.ping
 
   return async (c, next) => {
+    if (!connectionVerified) {
+      const ok = await store.ping!()
+      if (!ok) throw new Error(`[hono-req-limit] ${store.type} store connection check failed`)
+      connectionVerified = true
+    }
+
     if (skip && (await skip(c))) {
       return next()
     }

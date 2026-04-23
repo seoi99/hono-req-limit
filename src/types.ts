@@ -1,12 +1,20 @@
 import type { Context } from 'hono'
 import { ContentfulStatusCode } from 'hono/utils/http-status'
 
+export interface RedisLike {
+  eval(script: string, numkeys: number, ...args: (string | number)[]): Promise<unknown>
+  del(key: string): Promise<unknown>
+  ping(): Promise<string>
+}
+
 export interface RateLimitInfo {
   count: number
   resetAt: number
 }
 
 export interface RateLimitStore {
+  readonly type: string
+  ping?(): Promise<boolean>
   increment(key: string, windowMs: number): Promise<RateLimitInfo>
   reset(key: string): Promise<void>
 }
