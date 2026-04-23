@@ -23,6 +23,7 @@ export function rateLimitMiddleware(options: RateLimitOptions = {}): MiddlewareH
     onLimitReached,
   } = options
 
+
   return async (c, next) => {
     if (skip && (await skip(c))) {
       return next()
