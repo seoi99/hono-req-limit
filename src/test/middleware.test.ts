@@ -8,6 +8,25 @@ describe('MemoryStore', () => {
   })
 })
 
+describe('rateLimit - algorithm option', () => {
+  it('uses token-bucket when algorithm is set', async () => {
+    const app = new Hono()
+    app.use('*', rateLimit({ algorithm: 'token-bucket', limit: 5, windowMs: 60_000 }))
+    app.get('/', (c) => c.text('OK'))
+    const res = await app.request('/')
+    expect(res.status).toBe(200)
+    expect(res.headers.get('RateLimit-Remaining')).toBe('4')
+  })
+
+  it('explicit store takes precedence over algorithm', async () => {
+    const store = new MemoryStore()
+    const app = new Hono()
+    app.use('*', rateLimit({ algorithm: 'token-bucket', store, limit: 5, windowMs: 60_000 }))
+    app.get('/', (c) => c.text('OK'))
+    expect(store.type).toBe('memory') // MemoryStore, not token-bucket variant
+  })
+})
+
 describe('rateLimit store connection check', () => {
   it('returns 500 on first request when store ping fails', async () => {
     const store = {

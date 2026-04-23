@@ -1,6 +1,6 @@
 import type { Context, MiddlewareHandler } from 'hono'
 import { MemoryStore } from './store/memory'
-import type { RateLimitOptions, RateLimitStore } from './types'
+import type { Algorithm, RateLimitOptions, RateLimitStore } from './types'
 
 function getClientIp(c: Context): string {
   return (
@@ -10,11 +10,17 @@ function getClientIp(c: Context): string {
   )
 }
 
+function createDefaultStore(algorithm: Algorithm): RateLimitStore {
+  return new MemoryStore({ algorithm })
+}
+
 export function rateLimitMiddleware(options: RateLimitOptions = {}): MiddlewareHandler {
   const {
     windowMs = 60_000,
     limit = 10,
     keyGenerator = getClientIp,
+    algorithm = 'fixed-window',
+    blockDuration,
     message = 'Too Many Requests',
     statusCode = 429,
     headers = true,
@@ -22,7 +28,7 @@ export function rateLimitMiddleware(options: RateLimitOptions = {}): MiddlewareH
     onLimitReached,
   } = options
 
-  const store: RateLimitStore = options.store ?? new MemoryStore()
+  const store: RateLimitStore = options.store ?? createDefaultStore(algorithm)
   let connectionVerified = !store.ping
 
   return async (c, next) => {
@@ -37,7 +43,22 @@ export function rateLimitMiddleware(options: RateLimitOptions = {}): MiddlewareH
     }
 
     const key = await keyGenerator(c)
-    const { count, resetAt } = await store.increment(key, windowMs)
+
+    // Block check — short-circuit before counting if client is in penalty period
+    if (blockDuration && store.isBlocked) {
+      const blockedUntil = await store.isBlocked(key)
+      if (blockedUntil !== false) {
+        if (headers) {
+          c.header('Retry-After', String(Math.ceil((blockedUntil - Date.now()) / 1000)))
+        }
+        const body = typeof message === 'function' ? await message(c) : message
+        return typeof body === 'string'
+          ? c.text(body, statusCode)
+          : c.json(body, statusCode)
+      }
+    }
+
+    const { count, resetAt } = await store.increment(key, windowMs, limit)
     const remaining = Math.max(0, limit - count)
     const resetSec = Math.ceil(resetAt / 1000)
 
@@ -49,6 +70,10 @@ export function rateLimitMiddleware(options: RateLimitOptions = {}): MiddlewareH
     }
 
     if (count > limit) {
+      if (blockDuration && store.block) {
+        await store.block(key, blockDuration)
+      }
+
       if (headers) {
         c.header('Retry-After', String(Math.ceil((resetAt - Date.now()) / 1000)))
       }

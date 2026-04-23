@@ -1,4 +1,6 @@
 export { rateLimitMiddleware as rateLimit } from './middleware'
 export { MemoryStore } from './store/memory'
 export { RedisStore } from './store/redis'
-export type { RateLimitOptions, RateLimitStore, RateLimitInfo, RedisLike } from './types'
+export type { Algorithm, RateLimitOptions, RateLimitStore, RateLimitInfo, RedisLike } from './types'
+export type { MemoryStoreOptions } from './store/memory'
+export type { RedisStoreOptions } from './store/redis'

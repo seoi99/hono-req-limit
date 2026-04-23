@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { RedisStore } from '../store/redis'
 import type { RedisLike } from '../types'
 
-function createMockClient(evalResult: [number, number] = [1, 60000]): RedisLike {
+function createMockClient(evalResult: unknown = [1, 60000]): RedisLike {
   return {
     eval: vi.fn().mockResolvedValue(evalResult),
     del: vi.fn().mockResolvedValue(1),
@@ -18,12 +18,12 @@ describe('RedisStore', () => {
     })
   })
 
-  describe('increment', () => {
+  describe('increment - fixed-window', () => {
     it('returns count and resetAt from lua result', async () => {
       const client = createMockClient([3, 45000])
       const store = new RedisStore(client)
       const before = Date.now()
-      const info = await store.increment('test-key', 60000)
+      const info = await store.increment('test-key', 60000, 10)
       const after = Date.now()
 
       expect(info.count).toBe(3)
@@ -34,7 +34,7 @@ describe('RedisStore', () => {
     it('calls eval with the key and windowMs as args', async () => {
       const client = createMockClient([1, 60000])
       const store = new RedisStore(client)
-      await store.increment('rate:127.0.0.1', 30000)
+      await store.increment('rate:127.0.0.1', 30000, 10)
 
       expect(client.eval).toHaveBeenCalledWith(
         expect.stringContaining('INCR'),
@@ -48,7 +48,7 @@ describe('RedisStore', () => {
       const client = createMockClient([1, -1])
       const store = new RedisStore(client)
       const before = Date.now()
-      const info = await store.increment('key', 60000)
+      const info = await store.increment('key', 60000, 10)
 
       expect(info.resetAt).toBeGreaterThanOrEqual(before)
     })
