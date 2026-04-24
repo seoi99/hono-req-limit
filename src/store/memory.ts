@@ -2,6 +2,8 @@ import type { Algorithm, RateLimitInfo, RateLimitStore } from '../types'
 
 export interface MemoryStoreOptions {
   algorithm?: Algorithm
+  /** How often (ms) to sweep and evict expired entries. Default: 300_000 (5 min). Pass 0 to disable. */
+  cleanupIntervalMs?: number
 }
 
 interface FixedWindowEntry {
@@ -12,6 +14,8 @@ interface FixedWindowEntry {
 interface TokenBucketEntry {
   tokens: number
   lastRefill: number
+  /** Earliest time this entry can be safely evicted (bucket fully refilled). */
+  expiresAt: number
 }
 
 export class MemoryStore implements RateLimitStore {
@@ -20,9 +24,37 @@ export class MemoryStore implements RateLimitStore {
   private fixedStore = new Map<string, FixedWindowEntry>()
   private tokenStore = new Map<string, TokenBucketEntry>()
   private blocks = new Map<string, number>()
+  private cleanupTimer: ReturnType<typeof setInterval> | undefined
 
-  constructor({ algorithm = 'fixed-window' }: MemoryStoreOptions = {}) {
+  constructor({ algorithm = 'fixed-window', cleanupIntervalMs = 300_000 }: MemoryStoreOptions = {}) {
     this.algorithm = algorithm
+    if (cleanupIntervalMs > 0) {
+      const timer = setInterval(() => this.cleanup(), cleanupIntervalMs)
+      // Prevent the timer from keeping the Node.js process alive after the server shuts down
+      ;(timer as unknown as { unref?(): void }).unref?.()
+      this.cleanupTimer = timer
+    }
+  }
+
+  /** Clear the cleanup timer. Call this when the store is no longer needed. */
+  destroy(): void {
+    if (this.cleanupTimer !== undefined) {
+      clearInterval(this.cleanupTimer)
+      this.cleanupTimer = undefined
+    }
+  }
+
+  private cleanup(): void {
+    const now = Date.now()
+    for (const [key, entry] of this.fixedStore) {
+      if (entry.resetAt <= now) this.fixedStore.delete(key)
+    }
+    for (const [key, entry] of this.tokenStore) {
+      if (entry.expiresAt <= now) this.tokenStore.delete(key)
+    }
+    for (const [key, ts] of this.blocks) {
+      if (ts <= now) this.blocks.delete(key)
+    }
   }
 
   async increment(key: string, windowMs: number, limit: number): Promise<RateLimitInfo> {
@@ -57,15 +89,16 @@ export class MemoryStore implements RateLimitStore {
 
     if (refilled >= 1) {
       const tokens = refilled - 1
-      this.tokenStore.set(key, { tokens, lastRefill: now })
-      const count = limit - Math.floor(tokens)
       const msUntilFull = Math.ceil((limit - tokens) / refillRate)
+      this.tokenStore.set(key, { tokens, lastRefill: now, expiresAt: now + msUntilFull })
+      const count = limit - Math.floor(tokens)
       return { count, resetAt: now + msUntilFull }
     }
 
     // Denied — not enough tokens
-    this.tokenStore.set(key, { tokens: refilled, lastRefill: now })
     const msUntilNextToken = Math.ceil((1 - refilled) / refillRate)
+    const msUntilFull = Math.ceil((limit - refilled) / refillRate)
+    this.tokenStore.set(key, { tokens: refilled, lastRefill: now, expiresAt: now + msUntilFull })
     return { count: limit + 1, resetAt: now + msUntilNextToken }
   }
 

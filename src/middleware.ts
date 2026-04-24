@@ -1,14 +1,7 @@
 import type { Context, MiddlewareHandler } from 'hono'
 import { MemoryStore } from './store/memory'
 import type { Algorithm, RateLimitOptions, RateLimitStore } from './types'
-
-function getClientIp(c: Context): string {
-  return (
-    c.req.header('x-forwarded-for')?.split(',')[0].trim() ??
-    c.req.header('x-real-ip') ??
-    'unknown'
-  )
-}
+import { getClientIp } from './key-generators'
 
 function createDefaultStore(algorithm: Algorithm): RateLimitStore {
   return new MemoryStore({ algorithm })
