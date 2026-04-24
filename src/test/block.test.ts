@@ -39,17 +39,17 @@ describe('MemoryStore - block / isBlocked', () => {
 describe('RedisStore - block / isBlocked', () => {
   function mockClient(): RedisLike {
     return {
-      eval: vi.fn().mockResolvedValue(0),
+      evalScript: vi.fn().mockResolvedValue(0),
       del: vi.fn().mockResolvedValue(1),
       ping: vi.fn().mockResolvedValue('PONG'),
     }
   }
 
-  it('block calls eval with the block key and duration', async () => {
+  it('block calls evalScript with the block key and duration', async () => {
     const client = mockClient()
     const store = new RedisStore(client)
     await store.block('rate:ip', 5_000)
-    expect(client.eval).toHaveBeenCalledWith(
+    expect(client.evalScript).toHaveBeenCalledWith(
       expect.any(String),
       1,
       'rate:ip:blocked',
@@ -59,14 +59,14 @@ describe('RedisStore - block / isBlocked', () => {
 
   it('isBlocked returns false when pttl is 0 or negative', async () => {
     const client = mockClient()
-    vi.mocked(client.eval).mockResolvedValue(0)
+    vi.mocked(client.evalScript).mockResolvedValue(0)
     const store = new RedisStore(client)
     expect(await store.isBlocked('key')).toBe(false)
   })
 
   it('isBlocked returns blockedUntil when pttl > 0', async () => {
     const client = mockClient()
-    vi.mocked(client.eval).mockResolvedValue(5_000)
+    vi.mocked(client.evalScript).mockResolvedValue(5_000)
     const store = new RedisStore(client)
     const before = Date.now()
     const result = await store.isBlocked('key')

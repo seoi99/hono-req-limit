@@ -1,5 +1,20 @@
 import type { Algorithm, RateLimitInfo, RateLimitStore, RedisLike } from '../types'
 
+interface IoRedisLike {
+  eval(script: string, numkeys: number, ...args: (string | number)[]): Promise<unknown>
+  del(key: string): Promise<unknown>
+  ping(): Promise<string>
+}
+
+/** Wraps a standard ioredis / node-redis client to satisfy the RedisLike interface. */
+export function createRedisAdapter(client: IoRedisLike): RedisLike {
+  return {
+    evalScript: (script, numkeys, ...args) => client.eval(script, numkeys, ...args),
+    del: (key) => client.del(key),
+    ping: () => client.ping(),
+  }
+}
+
 export interface RedisStoreOptions {
   algorithm?: Algorithm
 }
@@ -56,7 +71,7 @@ export class RedisStore implements RateLimitStore {
   }
 
   private async fixedWindowIncrement(key: string, windowMs: number): Promise<RateLimitInfo> {
-    const result = await this.client.eval(FIXED_WINDOW_SCRIPT, 1, key, windowMs) as [number, number]
+    const result = await this.client.evalScript(FIXED_WINDOW_SCRIPT, 1, key, windowMs) as [number, number]
     const [count, pttl] = result
     return { count, resetAt: Date.now() + Math.max(pttl, 0) }
   }
@@ -64,7 +79,7 @@ export class RedisStore implements RateLimitStore {
   private async tokenBucketIncrement(key: string, windowMs: number, limit: number): Promise<RateLimitInfo> {
     const refillRate = limit / windowMs
     const now = Date.now()
-    const result = await this.client.eval(TOKEN_BUCKET_SCRIPT, 1, key, limit, refillRate, now) as [number, number, number]
+    const result = await this.client.evalScript(TOKEN_BUCKET_SCRIPT, 1, key, limit, refillRate, now) as [number, number, number]
     const [, count, resetAt] = result
     return { count, resetAt }
   }
@@ -83,11 +98,11 @@ export class RedisStore implements RateLimitStore {
   }
 
   async block(key: string, durationMs: number): Promise<void> {
-    await this.client.eval(BLOCK_SCRIPT, 1, `${key}:blocked`, durationMs)
+    await this.client.evalScript(BLOCK_SCRIPT, 1, `${key}:blocked`, durationMs)
   }
 
   async isBlocked(key: string): Promise<number | false> {
-    const pttl = await this.client.eval(IS_BLOCKED_SCRIPT, 1, `${key}:blocked`) as number
+    const pttl = await this.client.evalScript(IS_BLOCKED_SCRIPT, 1, `${key}:blocked`) as number
     return pttl > 0 ? Date.now() + pttl : false
   }
 }

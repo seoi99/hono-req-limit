@@ -62,7 +62,7 @@ describe('MemoryStore - token-bucket', () => {
 describe('RedisStore - token-bucket', () => {
   function mockClient(evalResult: unknown = [1, 1, Date.now() + 60_000]): RedisLike {
     return {
-      eval: vi.fn().mockResolvedValue(evalResult),
+      evalScript: vi.fn().mockResolvedValue(evalResult),
       del: vi.fn().mockResolvedValue(1),
       ping: vi.fn().mockResolvedValue('PONG'),
     }
@@ -82,11 +82,11 @@ describe('RedisStore - token-bucket', () => {
     expect(result.count).toBe(11)
   })
 
-  it('passes capacity and refillRate to eval', async () => {
+  it('passes capacity and refillRate to evalScript', async () => {
     const client = mockClient([1, 1, Date.now() + 60_000])
     const store = new RedisStore(client, { algorithm: 'token-bucket' })
     await store.increment('key', 60_000, 10)
-    expect(client.eval).toHaveBeenCalledWith(
+    expect(client.evalScript).toHaveBeenCalledWith(
       expect.any(String),
       1,
       'key',
