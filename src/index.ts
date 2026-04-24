@@ -1,6 +1,6 @@
 export { rateLimitMiddleware as rateLimit } from './middleware'
 export { MemoryStore } from './store/memory'
-export { RedisStore } from './store/redis'
+export { RedisStore, createRedisAdapter } from './store/redis'
 export { getClientIp, keyByHeader, keyByContext } from './key-generators'
 export type { Algorithm, RateLimitOptions, RateLimitStore, RateLimitInfo, RedisLike } from './types'
 export type { MemoryStoreOptions } from './store/memory'

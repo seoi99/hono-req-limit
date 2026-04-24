@@ -4,7 +4,7 @@ import { ContentfulStatusCode } from 'hono/utils/http-status'
 export type Algorithm = 'fixed-window' | 'token-bucket'
 
 export interface RedisLike {
-  eval(script: string, numkeys: number, ...args: (string | number)[]): Promise<unknown>
+  evalScript(script: string, numkeys: number, ...args: (string | number)[]): Promise<unknown>
   del(key: string): Promise<unknown>
   ping(): Promise<string>
 }

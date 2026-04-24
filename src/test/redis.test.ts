@@ -4,7 +4,7 @@ import type { RedisLike } from '../types'
 
 function createMockClient(evalResult: unknown = [1, 60000]): RedisLike {
   return {
-    eval: vi.fn().mockResolvedValue(evalResult),
+    evalScript: vi.fn().mockResolvedValue(evalResult),
     del: vi.fn().mockResolvedValue(1),
     ping: vi.fn().mockResolvedValue('PONG'),
   }
@@ -31,12 +31,12 @@ describe('RedisStore', () => {
       expect(info.resetAt).toBeLessThanOrEqual(after + 45000)
     })
 
-    it('calls eval with the key and windowMs as args', async () => {
+    it('calls evalScript with the key and windowMs as args', async () => {
       const client = createMockClient([1, 60000])
       const store = new RedisStore(client)
       await store.increment('rate:127.0.0.1', 30000, 10)
 
-      expect(client.eval).toHaveBeenCalledWith(
+      expect(client.evalScript).toHaveBeenCalledWith(
         expect.stringContaining('INCR'),
         1,
         'rate:127.0.0.1',

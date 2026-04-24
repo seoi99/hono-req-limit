@@ -1,6 +1,6 @@
 {
   "name": "hono-req-limit",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Rate limiting middleware for Hono",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -36,8 +36,16 @@
     "rate-limiting",
     "throttle"
   ],
-  "author": "",
+  "author": "bumjuseo <seo9204@gmail.com>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bumjuseo/hono-req-limit"
+  },
+  "homepage": "https://github.com/bumjuseo/hono-req-limit#readme",
+  "bugs": {
+    "url": "https://github.com/bumjuseo/hono-req-limit/issues"
+  },
   "engines": {
     "node": ">=18"
   },
