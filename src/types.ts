@@ -21,6 +21,8 @@ export interface RateLimitStore {
   isBlocked?(key: string): Promise<number | false>
   increment(key: string, windowMs: number, limit: number): Promise<RateLimitInfo>
   reset(key: string): Promise<void>
+  /** Release background resources (e.g. cleanup timers). */
+  destroy?(): void
 }
 
 export interface RateLimitOptions {
