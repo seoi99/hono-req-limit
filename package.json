@@ -36,15 +36,15 @@
     "rate-limiting",
     "throttle"
   ],
-  "author": "bumjuseo <seo9204@gmail.com>",
+  "author": "seoi99 <seo9204@gmail.com>",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/bumjuseo/hono-req-limit"
+    "url": "https://github.com/seoi99/hono-req-limit"
   },
-  "homepage": "https://github.com/bumjuseo/hono-req-limit#readme",
+  "homepage": "https://github.com/seoi99/hono-req-limit#readme",
   "bugs": {
-    "url": "https://github.com/bumjuseo/hono-req-limit/issues"
+    "url": "https://github.com/seoi99/hono-req-limit/issues"
   },
   "engines": {
     "node": ">=18"
